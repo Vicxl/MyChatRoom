@@ -15,7 +15,7 @@ class ExcuteClient implements Runnable{
             ConcurrentHashMap<String,Socket>();
     private final Socket client;
 
-    ExcuteClient(Socket client) {
+   public ExcuteClient(Socket client) {
         this.client = client;
     }
 
@@ -23,29 +23,35 @@ class ExcuteClient implements Runnable{
         try {
             InputStream clientInput = this.client.getInputStream();
             Scanner scanner = new Scanner(clientInput);
-            String line = scanner.nextLine();
-            //注册 userName:<name>
-            if (line.startsWith("userName")) {
-                String userName = line.split("\\:")[1];
-                this.register(userName, client);
+            while (true) {
+                String line = scanner.nextLine();
+                //注册 userName:<name>
+                if (line.startsWith("userName")) {
+                    String userName = line.split("\\:")[1];
+                    this.register(userName, client);
+                    continue;
+                }
+                //private:<name>:<message>
+                if (line.startsWith("private")) {
+                    String[] segments = line.split("\\:");
+                    String userName = segments[1];
+                    String message = segments[2];
+                    this.privateChat(userName, message);
+                    continue;
+                }
+                if (line.startsWith("group")) {
+                    String message = line.split("\\:")[1];
+                    this.groupChat(message);
+                    continue;
+                }
+                if (line.equals("bye")) {
+                    this.quit();
+                    break;
+                }
             }
-            if (line.startsWith("private")) {
-                String[] segments = line.split("\\:");
-                String userName = segments[1];
-                String message = segments[2];
-                this.privateChat(userName, message);
+            } catch(IOException e){
+                e.printStackTrace();
             }
-            if (line.startsWith("group")) {
-                String[] message = line.split("\\:");
-                this.groupChat(message);
-
-            }
-            if (line.equals("bye")) {
-                this.quit();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
     }
     private void quit(){
@@ -65,10 +71,14 @@ class ExcuteClient implements Runnable{
                 break;
             }
         }
+        return currentUserName;
     }
 
-    private void groupChat(String[] message) {
+    private void groupChat(String message) {
         for(Socket socket:ONLINE_USER_MAP.values()){
+            if(socket.equals(this.client)){
+                continue;
+            }
             this.sendMessage(socket,this.getCurrentUserName()
                     + "说：" + message);
         }
@@ -84,7 +94,7 @@ class ExcuteClient implements Runnable{
 
     private void register(String userName, Socket client) {
         System.out.println(userName + "加入到聊天室"
-                + client.getLocalSocketAddress());
+                + client.getRemoteSocketAddress());
         ONLINE_USER_MAP.put(userName,client);
         printOnlineUser();
         sendMessage(this.client,userName+"注册成功");

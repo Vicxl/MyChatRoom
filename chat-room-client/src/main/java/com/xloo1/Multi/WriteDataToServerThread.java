@@ -8,8 +8,6 @@ import java.util.Scanner;
 
 public class WriteDataToServerThread extends Thread {
     private final Socket client;
-
-
     public WriteDataToServerThread(Socket client) {
         this.client = client;
     }
